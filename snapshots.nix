@@ -6,7 +6,7 @@
 # A particular package in a snapshot would be accessed with:
 #   snapshots."lts-13.18".conduit
 
-{ lib, mkPkgSet, stackage, excludeBootPackages, ghc-boot-packages }:
+{ lib, mkPkgSet, stackage, excludeBootPackages, ghc-boot-packages, hackage, ghcExtraPackages }:
 
 with lib;
 
@@ -16,7 +16,8 @@ let
     # ghc-boot-packages are needed for the reinstallable ghc library and
     # are constructed from the patched ghc source.
     pkg-def-extras = (pkg-def-extras name)
-      ++ [(hackage: ghc-boot-packages.${(pkg-def hackage).compiler.nix-name})];
+      ++ [(hkg: ghc-boot-packages.${(pkg-def hkg).compiler.nix-name})]
+      ++ ghcExtraPackages (pkg-def hackage).compiler.packages;
     modules = [
       { reinstallableLibGhc = true; } # Allow ghc library to be installed for packages that need it
       { packages.Cabal.patches = [ ./overlays/patches/Cabal/fix-data-dir.patch ]; }
@@ -45,10 +46,10 @@ let
       # https://github.com/commercialhaskell/stackage/issues/4466
       fix-ghc-transformers = {
         predicate = ltsInRange "12" "14"; # [12, 14) : 14.1 has correct versions
-        extra = hackage: {
+        extra = hkg: {
           packages = {
-            "transformers" = (((hackage.transformers)."0.5.6.2").revisions).default;
-            "process" = (((hackage.process)."1.6.5.0").revisions).default;
+            "transformers" = (((hkg.transformers)."0.5.6.2").revisions).default;
+            "process" = (((hkg.process)."1.6.5.0").revisions).default;
           };
         };
       };
@@ -58,9 +59,9 @@ let
       # because it is expected that hsc2hs comes with ghc.
       fix-hsc2hs = {
         predicate = ltsInRange "1" "14"; # [1, 14) : 14.1 includes hsc2hs
-        extra = hackage: {
+        extra = hkg: {
           packages = {
-            "hsc2hs" = (((hackage.hsc2hs)."0.68.4").revisions).default;
+            "hsc2hs" = (((hkg.hsc2hs)."0.68.4").revisions).default;
           };
         };
       };

@@ -90,6 +90,11 @@ self: super: {
               original.packages;
           };
 
+        # Get the package versions provided in a plan's compiler.packages set
+        # from hackage.
+        ghcExtraPackages = p: builtins.attrValues (builtins.mapAttrs
+            (n: v: (hkg: ((hkg.${n}).${v}).revisions.default)) (builtins.trace p p));
+
         # Create a Haskell package set based on a Stack configuration.
         mkStackPkgSet =
             { stack-pkgs  # Path to the output of stack-to-nix
@@ -115,6 +120,7 @@ self: super: {
                 pkg-def-extras = [ stack-pkgs.extras
                                    self.ghc-boot-packages.${compiler.nix-name}
                                  ]
+                              ++ ghcExtraPackages compiler.packages
                               ++ pkg-def-extras;
                 # set doExactConfig = true. The stackage set should be consistent
                 # and we should trust stackage here!
@@ -149,7 +155,7 @@ self: super: {
             };
 
         # Package sets for all stackage snapshots.
-        snapshots = import ../snapshots.nix { inherit (self) lib ghc-boot-packages; inherit mkPkgSet stackage excludeBootPackages; };
+        snapshots = import ../snapshots.nix { inherit (self) lib ghc-boot-packages; inherit mkPkgSet stackage excludeBootPackages hackage ghcExtraPackages; };
         # Pick a recent LTS snapshot to be our "default" package set.
         haskellPackages = snapshots."lts-14.13";
 

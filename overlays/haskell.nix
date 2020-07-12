@@ -633,6 +633,7 @@ final: prev: {
           	final.recurseIntoAttrs ({
             # Things that require no IFD to build
             inherit (final.buildPackages.haskell-nix) source-pins;
+            inherit (final.evalPackages.haskell-nix) source-pins;
             # Double buildPackages is intentional,
             # see comment in lib/default.nix for details.
             # Using buildPackages rather than evalPackages so both darwin and linux
@@ -643,18 +644,18 @@ final: prev: {
             inherit (final) glibcLocales;
           } // final.lib.optionalAttrs (ifdLevel > 0) {
             # Things that require one IFD to build (the inputs should be in level 0)
-            boot-alex = final.buildPackages.haskell-nix.bootstrap.packages.alex;
-            boot-happy = final.buildPackages.haskell-nix.bootstrap.packages.happy;
-            boot-hscolour = final.buildPackages.haskell-nix.bootstrap.packages.hscolour;
-            ghc = final.buildPackages.haskell-nix.compiler.${compiler-nix-name};
+            boot-alex = final.evalPackages.haskell-nix.bootstrap.packages.alex;
+            boot-happy = final.evalPackages.haskell-nix.bootstrap.packages.happy;
+            boot-hscolour = final.evalPackages.haskell-nix.bootstrap.packages.hscolour;
+            ghc = final.evalPackages.haskell-nix.compiler.${compiler-nix-name};
             ghc-boot-packages-nix = final.recurseIntoAttrs
               final.ghc-boot-packages-nix.${compiler-nix-name};
             ghc-extra-projects-nix =
               final.ghc-extra-projects.${compiler-nix-name}.plan-nix;
           } // final.lib.optionalAttrs (ifdLevel > 1) {
             # Things that require two levels of IFD to build (inputs should be in level 1)
-            nix-tools = final.buildPackages.haskell-nix.nix-tools.${compiler-nix-name};
-            cabal-install = final.buildPackages.haskell-nix.cabal-install.${compiler-nix-name};
+            nix-tools = final.evalPackages.haskell-nix.nix-tools.${compiler-nix-name};
+            cabal-install = final.evalPackages.haskell-nix.cabal-install.${compiler-nix-name};
             # These seem to be the only things we use from `ghc-extra-packages`
             # in haskell.nix itself.
             inherit (final.ghc-extra-packages."${compiler-nix-name}"

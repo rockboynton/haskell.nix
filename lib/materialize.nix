@@ -50,10 +50,10 @@ let
     else if sha256 != null
       then
         # Let the user know how to materialize if they want to.
-        builtins.trace materializeMessage calculateUseHash
+        calculateUseHash
     else # materialized == null && sha256 == null
         # Let the user know how to calculate a sha256 or materialize if they want to.
-        builtins.trace sha256message (builtins.trace materializeMessage calculateNoHash);
+        calculateNoHash;
 
   # Build fully and check the hash and materialized versions
   checked =

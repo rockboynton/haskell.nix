@@ -252,9 +252,7 @@ let
       sha256Arg = "sha256";
       materialized = if __pathExists materialized
         then materialized
-        else __trace ("WARNING: No materialized dummy-ghc-data for "
-            + "${ghc.targetPrefix}${ghc.name}-${pkgs.stdenv.buildPlatform.system}.")
-          null;
+        else null;
       reasonNotSafe = null;
     } // pkgs.lib.optionalAttrs (checkMaterialization != null) {
       inherit checkMaterialization;

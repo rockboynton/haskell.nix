@@ -383,9 +383,7 @@ let
     buildPhase = ''
       runHook preBuild
       # https://gitlab.haskell.org/ghc/ghc/issues/9221
-      # $SETUP_HS build ${haskellLib.componentTarget componentId} -j$(($NIX_BUILD_CORES > 4 ? 4 : $NIX_BUILD_CORES)) ${lib.concatStringsSep " " setupBuildFlags}
-      # Don't limit parallelism like upstream does:
-      $SETUP_HS build ${haskellLib.componentTarget componentId} -j$NIX_BUILD_CORES ${lib.concatStringsSep " " setupBuildFlags}
+      $SETUP_HS build ${haskellLib.componentTarget componentId} -j$(($NIX_BUILD_CORES > 4 ? 4 : $NIX_BUILD_CORES)) ${lib.concatStringsSep " " setupBuildFlags}
       runHook postBuild
     '';
 

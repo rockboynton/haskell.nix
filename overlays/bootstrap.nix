@@ -34,7 +34,7 @@ let
     '';
     # For each architecture, what GHC version we should use for bootstrapping.
     buildBootstrapper =
-        if final.targetPlatform.isAarch64 && final.buildPlatform.isAarch64
+        if final.targetPlatform.isAarch64 || final.buildPlatform.isAarch64
         then {
             compilerNixName = "ghc882";
         }
@@ -149,8 +149,7 @@ in {
                 ++ fromUntil "8.10.2" "8.10.3" ./patches/ghc/MR3714-backported-to-8.10.2.patch
 
                 # See https://github.com/input-output-hk/haskell.nix/issues/1027
-                # Breaks ghci on aarch64:
-                # ++ final.lib.optional (versionAtLeast "8.10.3" && final.targetPlatform.isAarch64) ./patches/ghc/3434.patch
+                ++ final.lib.optional (versionAtLeast "8.10.3" && final.targetPlatform.isAarch64) ./patches/ghc/3434.patch
 
                 ++ from      "8.10.1"          ./patches/ghc/ghc-acrt-iob-func.patch
 
@@ -366,8 +365,9 @@ in {
                 extra-passthru = { buildGHC = final.buildPackages.haskell-nix.compiler.ghc8101; };
 
                 bootPkgs = bootPkgs // {
-                  # Not using 8.6 due to #1092
-                  ghc = final.buildPackages.buildPackages.haskell-nix.compiler.ghc884;
+                  ghc = if (final.buildPlatform.isAarch64 || final.targetPlatform.isAarch64)
+                        then final.buildPackages.buildPackages.haskell-nix.compiler.ghc884
+                        else final.buildPackages.buildPackages.haskell-nix.compiler.ghc865;
                 };
                 inherit sphinx installDeps;
 
@@ -386,8 +386,9 @@ in {
                 extra-passthru = { buildGHC = final.buildPackages.haskell-nix.compiler.ghc8102; };
 
                 bootPkgs = bootPkgs // {
-                  # Not using 8.6 due to #1092
-                  ghc = final.buildPackages.buildPackages.haskell-nix.compiler.ghc884;
+                  ghc = if (final.buildPlatform.isAarch64 || final.targetPlatform.isAarch64)
+                        then final.buildPackages.buildPackages.haskell-nix.compiler.ghc884
+                        else final.buildPackages.buildPackages.haskell-nix.compiler.ghc865;
                 };
                 inherit sphinx installDeps;
 
@@ -406,8 +407,9 @@ in {
                 extra-passthru = { buildGHC = final.buildPackages.haskell-nix.compiler.ghc8103; };
 
                 bootPkgs = bootPkgs // {
-                  # Not using 8.6 due to #1092
-                  ghc = final.buildPackages.buildPackages.haskell-nix.compiler.ghc884;
+                  ghc = if (final.buildPlatform.isAarch64 || final.targetPlatform.isAarch64)
+                        then final.buildPackages.buildPackages.haskell-nix.compiler.ghc884
+                        else final.buildPackages.buildPackages.haskell-nix.compiler.ghc865;
                 };
                 inherit sphinx installDeps;
 
@@ -422,12 +424,13 @@ in {
 
                 ghc-patches = ghc-patches "8.10.3";
             });
-            ghc8104 = final.callPackage ../compiler/ghc {
+            ghc8104 = final.callPackage ../compiler/ghc (traceWarnOld "8.10" {
                 extra-passthru = { buildGHC = final.buildPackages.haskell-nix.compiler.ghc8104; };
 
                 bootPkgs = bootPkgs // {
-                  # Not using 8.6 due to #1092
-                  ghc = final.buildPackages.buildPackages.haskell-nix.compiler.ghc884;
+                  ghc = if (final.buildPlatform.isAarch64 || final.targetPlatform.isAarch64)
+                        then final.buildPackages.buildPackages.haskell-nix.compiler.ghc884
+                        else final.buildPackages.buildPackages.haskell-nix.compiler.ghc865;
                 };
                 inherit sphinx installDeps;
 
@@ -441,13 +444,14 @@ in {
                 };
 
                 ghc-patches = ghc-patches "8.10.4";
-            };
+            });
             ghc8105 = final.callPackage ../compiler/ghc {
                 extra-passthru = { buildGHC = final.buildPackages.haskell-nix.compiler.ghc8105; };
 
                 bootPkgs = bootPkgs // {
-                  # Not using 8.6 due to #1092
-                  ghc = final.buildPackages.buildPackages.haskell-nix.compiler.ghc884;
+                  ghc = if (final.buildPlatform.isAarch64 || final.targetPlatform.isAarch64)
+                        then final.buildPackages.buildPackages.haskell-nix.compiler.ghc884
+                        else final.buildPackages.buildPackages.haskell-nix.compiler.ghc865;
                 };
                 inherit sphinx installDeps;
 
@@ -486,8 +490,9 @@ in {
                 extra-passthru = { buildGHC = final.buildPackages.haskell-nix.compiler.ghc810420210212; };
 
                 bootPkgs = bootPkgs // {
-                  # Not using 8.6 due to #1092
-                  ghc = final.buildPackages.buildPackages.haskell-nix.compiler.ghc884;
+                  ghc = if (final.buildPlatform.isAarch64 || final.targetPlatform.isAarch64)
+                        then final.buildPackages.buildPackages.haskell-nix.compiler.ghc884
+                        else final.buildPackages.buildPackages.haskell-nix.compiler.ghc865;
                 };
                 inherit sphinx installDeps;
 

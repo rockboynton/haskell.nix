@@ -26,21 +26,6 @@ in { haskell-nix = prev.haskell-nix // {
       ];
     };
 
-    haskell-language-server = {
-      # Fixes for:
-      #   * lsp-types https://github.com/haskell/lsp/issues/349
-      #   * ghc-api-compat
-      cabalProject = ''
-        packages: .
-        constraints: lsp-types < 1.3.0.0
-        source-repository-package
-          type: git
-          location: https://github.com/hsyl20/ghc-api-compat
-          tag: 8fee87eac97a538dbe81ff1ab18cff10f2f9fa15
-          --sha256: sha256-byehvdxQxhNk5ZQUXeFHjAZpAze4Ct9261ro4c5acZk=
-      '';
-    };
-
     hpack = {
       modules = [ { reinstallableLibGhc = true; } ];
     };

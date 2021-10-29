@@ -57,12 +57,16 @@ Add `flake.nix`:
                 hlint = {};
                 haskell-language-server = {};
               };
+              # Non-Haskell shell tools go here
+              shell.buildInputs = with pkgs; [
+                nixpkgs-fmt
+              ];
               # This adds `js-unknown-ghcjs-cabal` to the shell.
               shell.crossPlatform = p: [p.ghcjs];
             };
         })
       ];
-      pkgs = import nixpkgs { inherit system overlays; };
+      pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
       flake = pkgs.helloProject.flake {
         # This adds support for `nix build .#js-unknown-ghcjs-cabal:hello:exe:hello`
         crossPlatforms = p: [p.ghcjs];

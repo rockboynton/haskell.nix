@@ -147,10 +147,18 @@ final: prev: {
                     else ((plan-pkgs.extras hackage).compiler or (plan-pkgs.pkgs hackage).compiler).nix-name;
                 pkg-def = excludeBootPackages compiler-nix-name plan-pkgs.pkgs;
                 patchesModule = ghcHackagePatches.${compiler-nix-name'} or {};
+                package.compiler-nix-name.version = final.buildPackages.haskell-nix.compiler.${compiler-nix-name'}.version;
+                plan.compiler-nix-name.version = final.buildPackages.haskell-nix.compiler.${(plan-pkgs.pkgs hackage).compiler.nix-name}.version;
+                withMsg = final.lib.assertMsg;
             in
               # Check that the GHC version of the selected compiler matches the one of the plan
-              assert (final.buildPackages.haskell-nix.compiler.${compiler-nix-name'}.version
-                   == final.buildPackages.haskell-nix.compiler.${(plan-pkgs.pkgs hackage).compiler.nix-name}.version);
+              assert (withMsg
+                (package.compiler-nix-name.version
+                  == plan.compiler-nix-name.version)
+                ''
+                The compiler versions for the package and the plan don't match.
+                       Make sure you didn't forget to update plan-sha256.''
+              );
               mkPkgSet {
                 inherit pkg-def;
                 pkg-def-extras = [ plan-pkgs.extras
@@ -488,6 +496,9 @@ final: prev: {
               plan-pkgs = importAndFilterProject {
                 inherit (callProjectResults) projectNix sourceRepos src;
               };
+              buildProject = if final.stdenv.hostPlatform != final.stdenv.buildPlatform
+                then final.buildPackages.haskell-nix.cabalProject' projectModule
+                else project;
               pkg-set = if plan-pkgs ? configurationError
                 then {
                   inherit (plan-pkgs) configurationError;
@@ -499,10 +510,11 @@ final: prev: {
                 else mkCabalProjectPkgSet
                 { inherit compiler-nix-name plan-pkgs;
                   pkg-def-extras = args.pkg-def-extras or [];
-                  modules = (args.modules or [])
-                          ++ final.lib.optional (args.ghcOverride != null || args.ghc != null)
-                              { ghc.package = if args.ghcOverride != null then args.ghcOverride else args.ghc; }
-                          ++ [ { compiler.nix-name = final.lib.mkForce args.compiler-nix-name; } ];
+                  modules = [ { _module.args.buildModules = final.lib.mkForce buildProject.pkg-set; } ]
+                    ++ (args.modules or [])
+                    ++ final.lib.optional (args.ghcOverride != null || args.ghc != null)
+                        { ghc.package = if args.ghcOverride != null then args.ghcOverride else args.ghc; }
+                    ++ [ { compiler.nix-name = final.lib.mkForce args.compiler-nix-name; } ];
                   extra-hackages = args.extra-hackages or [];
                 };
 
@@ -515,7 +527,7 @@ final: prev: {
                   tools = final.buildPackages.haskell-nix.tools pkg-set.config.compiler.nix-name;
                   roots = final.haskell-nix.roots pkg-set.config.compiler.nix-name;
                   projectFunction = haskell-nix: haskell-nix.cabalProject';
-                  inherit projectModule args;
+                  inherit projectModule buildProject args;
                 };
             in project);
 
@@ -576,6 +588,15 @@ final: prev: {
             projectCross = (final.lib.mapAttrs (_: pkgs:
                 rawProject.projectFunction pkgs.haskell-nix rawProject.projectModule
               ) final.pkgsCross) // { recurseForDerivations = false; };
+
+            # re-eval this project with an extra module (or module list).
+            appendModule = extraProjectModule: rawProject.projectFunction final.haskell-nix
+              ((if builtins.isList rawProject.projectModule
+                then rawProject.projectModule
+                else [rawProject.projectModule])
+              ++ (if builtins.isList extraProjectModule
+                then extraProjectModule
+                else [extraProjectModule]));
 
             # Add support for passing in `crossPlatforms` argument.
             # crossPlatforms is an easy way to include the inputs for a basic
@@ -704,12 +725,15 @@ final: prev: {
                         ++ final.lib.mapAttrsToList (n: v:
                             { name = "${prefix}${packageName}:test:${n}"; value = v; })
                           (package.components.tests)
+                        ++ final.lib.mapAttrsToList (n: v:
+                            { name = "${prefix}${packageName}:bench:${n}"; value = v; })
+                          (package.components.benchmarks)
                     ) (packageNames project);
                   checksForProject = prefix: project:
                     final.lib.concatMap (packageName:
                       let package = project.hsPkgs.${packageName};
                       in final.lib.mapAttrsToList (n: v:
-                          { name = "${packageName}:test:${n}"; value = v; })
+                          { name = "${prefix}${packageName}:test:${n}"; value = v; })
                         (final.lib.filterAttrs (_: v: final.lib.isDerivation v) (package.checks))
                     ) (packageNames project);
                   appsForProject =  prefix: project:
@@ -759,10 +783,15 @@ final: prev: {
                   // final.lib.optionalAttrs (args.cache == null) { inherit cache; });
                 generatedCache = genStackCache args;
                 cache = if args.cache != null then args.cache else generatedCache;
-            in let pkg-set = mkStackPkgSet
+            in let
+              buildProject = if final.stdenv.hostPlatform != final.stdenv.buildPlatform
+                then final.buildPackages.haskell-nix.stackProject' projectModule
+                else project;
+              pkg-set = mkStackPkgSet
                 { stack-pkgs = importAndFilterProject callProjectResults;
                   pkg-def-extras = (args.pkg-def-extras or []);
-                  modules = final.lib.singleton (mkCacheModule cache)
+                  modules = [ { _module.args.buildModules = final.lib.mkForce buildProject.pkg-set; }
+                      (mkCacheModule cache) ]
                     ++ (args.modules or [])
                     ++ final.lib.optional (args.ghc != null) { ghc.package = args.ghc; }
                     ++ final.lib.optional (args.compiler-nix-name != null)
@@ -777,7 +806,7 @@ final: prev: {
                   tools = final.buildPackages.haskell-nix.tools pkg-set.config.compiler.nix-name;
                   roots = final.haskell-nix.roots pkg-set.config.compiler.nix-name;
                   projectFunction = haskell-nix: haskell-nix.stackProject';
-                  inherit projectModule args;
+                  inherit projectModule buildProject args;
                 };
             in project);
 

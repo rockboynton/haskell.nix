@@ -504,7 +504,7 @@ in {
                     sha256 = "179ws2q0dinl1a39wm9j37xzwm84zfz3c5543vz8v479khigdvp3";
                 };
 
-                ghc-patches = ghc-patches "8.10.7";
+                ghc-patches = []; #ghc-patches "8.10.7";
             };
             ghc901 = final.callPackage ../compiler/ghc {
                 extra-passthru = { buildGHC = final.buildPackages.haskell-nix.compiler.ghc901; };

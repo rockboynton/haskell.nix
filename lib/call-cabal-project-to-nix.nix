@@ -163,7 +163,7 @@ let
     then cabalProjectIndexState
     else
       let latest-index-state = pkgs.lib.last (builtins.attrNames index-state-hashes);
-      in builtins.trace ("No index state specified" + (if name == null then "" else " for " + name) + ", using the latest index state that we know about (${latest-index-state})!") latest-index-state;
+      in latest-index-state;
 
   index-state-pinned = index-state != null || cabalProjectIndexState != null;
 

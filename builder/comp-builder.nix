@@ -14,6 +14,7 @@ let self =
 
 , preUnpack ? component.preUnpack, postUnpack ? component.postUnpack
 , configureFlags ? component.configureFlags
+, prePatch ? component.prePatch, postPatch ? component.postPatch
 , preConfigure ? component.preConfigure, postConfigure ? component.postConfigure
 , setupBuildFlags ? component.setupBuildFlags
 , preBuild ? component.preBuild , postBuild ? component.postBuild
@@ -42,9 +43,6 @@ let self =
 
 , enableStatic ? component.enableStatic
 , enableShared ? ghc.enableShared && component.enableShared && !haskellLib.isCrossHost
-               # on x86 we'll use shared libraries, even with musl m(
-               # ghc's internal linker seems to be broken on x86.
-               && !(stdenv.hostPlatform.isMusl && !stdenv.hostPlatform.isx86)
 , enableDeadCodeElimination ? component.enableDeadCodeElimination
 , writeHieFiles ? component.writeHieFiles
 
@@ -202,7 +200,11 @@ let
       ++ lib.optional stdenv.hostPlatform.isLinux (enableFeature enableDeadCodeElimination "split-sections")
       ++ lib.optionals haskellLib.isCrossHost (
         map (arg: "--hsc2hs-option=" + arg) (["--cross-compile"] ++ lib.optionals (stdenv.hostPlatform.isWindows) ["--via-asm"])
-        ++ lib.optional (package.buildType == "Configure") "--configure-option=--host=${stdenv.hostPlatform.config}" )
+        ++ lib.optional (package.buildType == "Configure") "--configure-option=--host=${
+           # Older ghcjs patched config.sub to support "js-unknown-ghcjs" (not "javascript-unknown-ghcjs")
+           if stdenv.hostPlatform.isGhcjs && builtins.compareVersions defaults.ghc.version "9" < 0
+             then "js-unknown-ghcjs"
+             else stdenv.hostPlatform.config}" )
       ++ configureFlags
       ++ (ghc.extraConfigureFlags or [])
       ++ lib.optional enableDebugRTS "--ghc-option=-debug"
@@ -289,7 +291,7 @@ let
             lib.optionalString (cabal-generator == "hpack") ''
               ${buildPackages.haskell-nix.internal-nix-tools}/bin/hpack
             ''
-        );
+        ) + lib.optionalString (prePatch != null) "\n${prePatch}";
     }
     # patches can (if they like) depend on the version of the package.
     // lib.optionalAttrs (patches != []) {
@@ -301,7 +303,7 @@ let
     }
     // haskellLib.optionalHooks {
       # These are hooks are needed to set up the source for building and running haddock
-      inherit preUnpack postUnpack preConfigure postConfigure;
+      inherit preUnpack postUnpack postPatch preConfigure postConfigure;
     }
     // lib.optionalAttrs (stdenv.buildPlatform.libc == "glibc") {
       LOCALE_ARCHIVE = "${buildPackages.glibcLocales}/lib/locale/locale-archive";
@@ -374,21 +376,21 @@ let
       mainProgram = exeName;
     };
 
-    propagatedBuildInputs =
-         frameworks # Frameworks will be needed at link time
+    propagatedBuildInputs = haskellLib.checkUnique "${ghc.targetPrefix}${fullName} propagatedBuildInputs" (
+         haskellLib.uniqueWithName frameworks # Frameworks will be needed at link time
       # Not sure why pkgconfig needs to be propagatedBuildInputs but
       # for gi-gtk-hs it seems to help.
-      ++ map pkgs.lib.getDev (builtins.concatLists pkgconfig)
+      ++ haskellLib.uniqueWithName (map pkgs.lib.getDev (builtins.concatLists pkgconfig))
       # These only need to be propagated for library components (otherwise they
       # will be in `buildInputs`)
-      ++ lib.optionals (haskellLib.isLibrary componentId) configFiles.libDeps
+      ++ lib.optionals (haskellLib.isLibrary componentId) configFiles.libDeps # libDeps is already deduplicated
       ++ lib.optionals (stdenv.hostPlatform.isWindows)
-        (lib.flatten component.libs);
+        (haskellLib.uniqueWithName (lib.flatten component.libs)));
 
-    buildInputs =
-      lib.optionals (!haskellLib.isLibrary componentId) configFiles.libDeps
+    buildInputs = haskellLib.checkUnique "${ghc.targetPrefix}${fullName} buildInputs" (
+      lib.optionals (!haskellLib.isLibrary componentId) configFiles.libDeps # libDeps is already deduplicated
       ++ lib.optionals (!stdenv.hostPlatform.isWindows)
-        (lib.flatten component.libs);
+        (haskellLib.uniqueWithName (lib.flatten component.libs)));
 
     nativeBuildInputs =
       [ghc buildPackages.removeReferencesTo]

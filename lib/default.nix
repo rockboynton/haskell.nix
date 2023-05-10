@@ -573,4 +573,34 @@ in {
     inherit pkgs;
     inherit (pkgs.buildPackages.buildPackages) runCommand;
   };
+
+  # Here we try to figure out which qemu to use based on the host platform.
+  # This guess can be overridden by passing qemuSuffix
+  qemuByHostPlatform = hostPlatform:
+    # I'd prefer this was a dictionary lookup, with a fall through into abort,
+    # that would make this more readable I guess.  I think there is some similar
+    # mapping somewhere in haskell.nix
+    if hostPlatform.isAarch32
+    then "arm"
+    else if hostPlatform.isAarch64
+    then "aarch64"
+    else abort "Don't know which QEMU to use for hostPlatform ${hostPlatform.config}. Please provide qemuSuffix";
+
+  # How to run ldd when checking for static linking
+  lddForTests = "${pkgs.pkgsBuildBuild.glibc.bin}/bin/ldd";
+
+  # Version of `lib.unique` that should be fast if the name attributes are unique
+  uniqueWithName = list:
+    lib.concatMap lib.unique (
+      builtins.attrValues (
+        builtins.groupBy (x: if __typeOf x == "set" then x.name or "noname" else "notset") list));
+
+  # Assert that each item in the list is unique
+  checkUnique = msg: x:
+    if __length x == __length (uniqueWithName x)
+      then x
+      else builtins.throw "Duplicate items found in ${msg} ${
+        __toJSON (__attrNames (lib.filterAttrs (_: v: __length v > 1) (
+          builtins.groupBy (x: if __typeOf x == "set" then x.name or "noname" else "notset") x)))
+      }";
 }
